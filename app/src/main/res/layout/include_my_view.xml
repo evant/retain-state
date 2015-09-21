@@ -1,0 +1,17 @@
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <Button
+        android:id="@+id/button_load_from_custom_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Load From Custom View" />
+
+    <TextView
+        android:id="@+id/result_load_from_custom_view"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="right"
+        tools:text="Hello World!" />
+</merge>
