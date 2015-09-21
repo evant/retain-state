@@ -9,16 +9,16 @@ import android.util.SparseArray;
 
 public class RetainState {
     /**
-     * Attempts to get the retain state for the given Activity with the given context. For this to
+     * Attempts to state the retain state for the given Activity with the given context. For this to
      * work, the context <em>must</em> by the Activity or a {@link ContextWrapper} around it, and
-     * that Activity <em>must</em> implement {@link me.tatarka.retainstate.RetainState.RetainStateProvider}.
+     * that Activity <em>must</em> implement {@link Provider}.
      */
     public static RetainState get(Context context) {
         if (context == null) {
             throw new NullPointerException("context == null");
         }
-        if (context instanceof RetainStateProvider) {
-            return ((RetainStateProvider) context).getRetainState();
+        if (context instanceof Provider) {
+            return ((Provider) context).getRetainState();
         }
         if (context instanceof ContextWrapper) {
             return get(((ContextWrapper) context).getBaseContext());
@@ -26,7 +26,8 @@ public class RetainState {
         throw new IllegalArgumentException("Given context " + context + " does not implement RetainStateProvider");
     }
 
-    private final SparseArray<Object> state;
+    @Nullable
+    private SparseArray<Object> state;
 
     /**
      * Constructs a new instance with the state saved by the given {@link FragmentActivity}.
@@ -44,21 +45,19 @@ public class RetainState {
 
     /**
      * Constructs a new instance with the given saved state. This state should be obtained from
-     * {@link #retainState()} and saved across configuration changes.
+     * {@link #getState()} and saved across configuration changes.
      */
     @SuppressWarnings("unchecked")
     public RetainState(@Nullable Object retainedState) {
         if (retainedState != null) {
             state = (SparseArray<Object>) retainedState;
-        } else {
-            state = new SparseArray<>();
         }
     }
 
     /**
      * Returns the state to save across configuration changes.
      */
-    public Object retainState() {
+    public Object getState() {
         return state;
     }
 
@@ -68,7 +67,10 @@ public class RetainState {
      * create unique id's.
      */
     @SuppressWarnings("unchecked")
-    public <T> T get(int id, OnCreate<T> onCreate) {
+    public <T> T state(int id, OnCreate<T> onCreate) {
+        if (state == null) {
+            state = new SparseArray<>();
+        }
         T item = (T) state.get(id);
         if (item == null) {
             item = onCreate.onCreate();
@@ -77,7 +79,7 @@ public class RetainState {
         return item;
     }
 
-    public interface RetainStateProvider {
+    public interface Provider {
         RetainState getRetainState();
     }
 

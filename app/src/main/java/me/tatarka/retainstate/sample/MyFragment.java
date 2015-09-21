@@ -26,7 +26,7 @@ public class MyFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        model = RetainState.get(getActivity()).get(R.id.result_load_from_fragment, RetainedModel.onCreate());
+        model = RetainState.get(getActivity()).state(R.id.result_load_from_fragment, RetainedModel.onCreate());
 
         final TextView textView = (TextView) view.findViewById(R.id.result_load_from_fragment);
         Button button = (Button) view.findViewById(R.id.button_load_from_fragment);

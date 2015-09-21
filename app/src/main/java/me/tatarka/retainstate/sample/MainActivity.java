@@ -19,7 +19,7 @@ public class MainActivity extends BaseActivity {
         final TextView textView = (TextView) findViewById(R.id.result_load_from_activity);
         final Button button = (Button) findViewById(R.id.button_load_from_activity);
 
-        model = getRetainState().get(R.id.result_load_from_activity, RetainedModel.onCreate());
+        model = RetainState.get(this).state(R.id.result_load_from_activity, RetainedModel.onCreate());
 
         model.setOnLoadFinishedListener(new RetainedModel.OnLoadFinishedListener() {
             @Override

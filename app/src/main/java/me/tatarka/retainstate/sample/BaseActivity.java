@@ -5,7 +5,7 @@ import android.support.v7.app.AppCompatActivity;
 
 import me.tatarka.retainstate.RetainState;
 
-public class BaseActivity extends AppCompatActivity implements RetainState.RetainStateProvider {
+public class BaseActivity extends AppCompatActivity implements RetainState.Provider {
     private RetainState retainState;
 
     @Override
@@ -16,7 +16,7 @@ public class BaseActivity extends AppCompatActivity implements RetainState.Retai
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
-        return retainState.retainState();
+        return retainState.getState();
     }
 
     @Override

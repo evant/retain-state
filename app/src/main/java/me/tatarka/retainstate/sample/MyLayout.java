@@ -36,7 +36,7 @@ public class MyLayout extends LinearLayout {
         if (isInEditMode()) {
             return;
         }
-        model = RetainState.get(getContext()).get(R.id.result_load_from_custom_view, RetainedModel.onCreate());
+        model = RetainState.get(getContext()).state(R.id.result_load_from_custom_view, RetainedModel.onCreate());
         
         model.setOnLoadFinishedListener(new RetainedModel.OnLoadFinishedListener() {
             @Override
