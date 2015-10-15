@@ -18,8 +18,8 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
     retainState = new RetainState(this);
+    super.onCreate(savedInstanceState);
   }
 
   @Override
