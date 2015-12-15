@@ -18,7 +18,7 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    retainState = new RetainState(this);
+    retainState = new RetainState(getLastNonConfigurationInstance());
     super.onCreate(savedInstanceState);
   }
 
@@ -34,7 +34,7 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 }
 ```
 
-Note: If you are using `FragmentActivity` or `AppCompatActivity` you have to override `onRetainCustomNonConfigurationInstance()` instead.
+Note: If you are using `FragmentActivity` or `AppCompatActivity` you have to use `getLastCustomNonConfigurationInstance()` and override `onRetainCustomNonConfigurationInstance()` instead.
 
 Now you just have to use `RetainState` to obtain the instance you want to retain.
 
