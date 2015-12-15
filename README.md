@@ -157,6 +157,7 @@ public class MyLoader extends Loader<String> {
           public void onResult(String result) {
             // Make sure this happens on the main thread!
             deliverResult(result);
+            complete();
           }
         });
     }
