@@ -1,4 +1,4 @@
-package me.tatarka.retainstate;
+package me.tatarka.loader;
 
 import org.junit.Test;
 

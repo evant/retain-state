@@ -8,7 +8,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context=".MainActivity">
+    tools:context="me.tatarka.controller.sample.MainControllerActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -30,15 +30,39 @@
             tools:text="Hello World!" />
     </LinearLayout>
 
-    <fragment
-        android:id="@+id/my_fragment"
-        android:name="me.tatarka.retainstate.sample.MyFragment"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        tools:layout="@layout/fragment_my" />
-
-    <me.tatarka.retainstate.sample.MyLayout
-        android:id="@+id/my_layout"
+    <include
+        android:id="@+id/my_controller"
+        layout="@layout/controller_my"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/button_dynamic_controller1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Dynamic Controller 1" />
+
+        <Button
+            android:id="@+id/button_dynamic_controller2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Dynamic Controller 2" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/dynamic_controller"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <android.support.v4.view.ViewPager
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 </LinearLayout>

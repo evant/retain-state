@@ -10,8 +10,8 @@ public class BaseActivity extends AppCompatActivity implements RetainState.Provi
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        retainState = new RetainState(getLastCustomNonConfigurationInstance());
         super.onCreate(savedInstanceState);
-        retainState = new RetainState(this);
     }
 
     @Override

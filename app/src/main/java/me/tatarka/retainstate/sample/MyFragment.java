@@ -9,10 +9,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import me.tatarka.loader.Loader;
+import me.tatarka.loader.LoaderManager;
 import me.tatarka.retainstate.RetainState;
 
 public class MyFragment extends Fragment {
-    private RetainedModel model;
+    private LoaderManager loaderManager;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -26,23 +28,32 @@ public class MyFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        model = RetainState.get(getActivity()).state(R.id.result_load_from_fragment, RetainedModel.onCreate());
+        loaderManager = RetainState.get(getActivity()).retain(R.id.result_load_from_fragment, LoaderManager.CREATE);
 
         final TextView textView = (TextView) view.findViewById(R.id.result_load_from_fragment);
         Button button = (Button) view.findViewById(R.id.button_load_from_fragment);
 
-        model.setOnLoadFinishedListener(new RetainedModel.OnLoadFinishedListener() {
+        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE, new Loader.Callbacks<String>() {
             @Override
-            public void onLoadFinished(String result) {
+            public void onLoaderStart() {
+                textView.setText("Loading...");
+            }
+
+            @Override
+            public void onLoaderResult(String result) {
                 textView.setText(result);
+            }
+
+            @Override
+            public void onLoaderComplete() {
+
             }
         });
 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                textView.setText(null);
-                model.load();
+                loader.restart();
             }
         });
     }
@@ -50,7 +61,13 @@ public class MyFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Don't want to leak fragment!
-        model.setOnLoadFinishedListener(null);
+        if (isRemoving() || getActivity().isFinishing()) {
+            loaderManager.destroy();
+            if (isRemoving()) {
+                RetainState.get(getActivity()).remove(R.id.result_load_from_fragment);
+            }
+        } else {
+            loaderManager.detach();
+        }
     }
 }

@@ -1,13 +1,14 @@
 package me.tatarka.retainstate;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
-import android.support.annotation.Nullable;
-import android.support.v4.app.FragmentActivity;
 import android.util.SparseArray;
 
-public class RetainState {
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+public class RetainState implements Iterable<Object> {
     /**
      * Attempts to state the retain state for the given Activity with the given context. For this to
      * work, the context <em>must</em> by the Activity or a {@link ContextWrapper} around it, and
@@ -23,32 +24,17 @@ public class RetainState {
         if (context instanceof ContextWrapper) {
             return get(((ContextWrapper) context).getBaseContext());
         }
-        throw new IllegalArgumentException("Given context " + context + " does not implement RetainStateProvider");
+        throw new IllegalArgumentException("Given context " + context + " does not implement RetainState.Provider");
     }
 
-    @Nullable
     private SparseArray<Object> state;
-
-    /**
-     * Constructs a new instance with the state saved by the given {@link FragmentActivity}.
-     */
-    public RetainState(FragmentActivity activity) {
-        this(activity.getLastCustomNonConfigurationInstance());
-    }
-
-    /**
-     * Constructs a new instance with the state saved by the given {@link Activity}.
-     */
-    public RetainState(Activity activity) {
-        this(activity.getLastNonConfigurationInstance());
-    }
 
     /**
      * Constructs a new instance with the given saved state. This state should be obtained from
      * {@link #getState()} and saved across configuration changes.
      */
     @SuppressWarnings("unchecked")
-    public RetainState(@Nullable Object retainedState) {
+    public RetainState(Object retainedState) {
         if (retainedState != null) {
             state = (SparseArray<Object>) retainedState;
         }
@@ -67,7 +53,7 @@ public class RetainState {
      * create unique id's.
      */
     @SuppressWarnings("unchecked")
-    public <T> T state(int id, OnCreate<T> onCreate) {
+    public <T> T retain(int id, OnCreate<T> onCreate) {
         if (state == null) {
             state = new SparseArray<>();
         }
@@ -79,6 +65,40 @@ public class RetainState {
         return item;
     }
 
+    /**
+     * Get an existing object with the given id. Returns null if it doesn't exist.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T get(int id) {
+        if (state == null) {
+            return null;
+        }
+        return (T) state.get(id);
+    }
+
+    /**
+     * Removes the object with the given id and returns it.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T remove(int id) {
+        if (state != null) {
+            Object value = state.get(id);
+            state.remove(id);
+            return (T) value;
+        }
+        return null;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Iterator<Object> iterator() {
+        if (state == null) {
+            return (Iterator<Object>) EMPTY_ITERATOR;
+        } else {
+            return new RetainStateIterator(state);
+        }
+    }
+
     public interface Provider {
         RetainState getRetainState();
     }
@@ -86,4 +106,48 @@ public class RetainState {
     public interface OnCreate<T> {
         T onCreate();
     }
+
+    private static class RetainStateIterator implements Iterator<Object> {
+        private final SparseArray<Object> state;
+        private int index;
+
+        private RetainStateIterator(SparseArray<Object> state) {
+            this.state = state;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < state.size();
+        }
+
+        @Override
+        public Object next() {
+            return state.valueAt(index++);
+        }
+
+        @Override
+        public void remove() {
+            state.remove(index);
+        }
+    }
+
+    /**
+     * Because {@link Collections#emptyIterator()} wasn't added until api 19.
+     */
+    private static final Iterator<?> EMPTY_ITERATOR = new Iterator<Object>() {
+        @Override
+        public boolean hasNext() {
+            return false;
+        }
+
+        @Override
+        public Object next() {
+            throw new NoSuchElementException();
+        }
+
+        @Override
+        public void remove() {
+            throw new IllegalStateException();
+        }
+    };
 }

@@ -25,6 +25,7 @@ public class RetainedModel {
     private Handler handler = new Handler(Looper.getMainLooper());
 
     public void load() {
+        result = null;
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -32,6 +33,7 @@ public class RetainedModel {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    return;
                 }
                 result = "Async Load Finished";
                 handler.post(new Runnable() {

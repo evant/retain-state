@@ -1,1 +1,1 @@
-include ':app', ':retainstate'
+include ':app', ':retainstate', ':loader'
