@@ -78,3 +78,93 @@ Use the new Fragment API setRetainInstance(boolean) instead; this is also availa
 This is silly, there are many instances when using a Fragment doesn't make sense, and Fragments retained this way can't even be nested! See https://code.google.com/p/android/issues/detail?id=151346 for more reasons why these methods should not be deprecated.
 
 Additinaly, these methods are used heavily by the support library to backport Loaders and Fragments. It would be infeasible for google to actually remove these methods any time in the near future, if at all because of this.
+
+# Loader
+
+This repo also includes a super-simple loader implementation built on top of retain-state. It lets you easily load something in the background and then get callbacks on the main thread that fire at the approriate times.
+
+## Download
+
+Loader is implemented in https://raw.githubusercontent.com/evant/retain-state/master/loader/src/main/java/me/tatarka/loader/Loader.java and https://raw.githubusercontent.com/evant/retain-state/master/loader/src/main/java/me/tatarka/loader/LoaderManager.java this may end up on maven central at some point.
+
+## Usage
+
+You obtain an instance of `LoaderManager` using retain-state to retain it, then you initilize one or more loaders with callbacks. Finnally you use the methods `start()`, `stop()`, and `restart()` on the loader to load the data. The callbacks will automatically re-deliver the correct results on a configuration change.
+
+```java
+public class MainActivity extends BaseActivity {
+    private LoaderManager loaderManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        loaderManager = RetainState.get(this).retain(R.id.result_load_from_activity, LoaderManager.CREATE);
+
+        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.Callbacks<String>() {
+            @Override
+            public void onLoaderStart() {
+              // Update your ui to show you are loading something
+            }
+
+            @Override
+            public void onLoaderResult(String result) {
+              // Update your ui with the result
+            }
+
+            @Override
+            public void onLoaderComplete() {
+              // Optionally do something when the loader has completed
+            }
+        });
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loader.restart();
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Loader cleanup, detach() will remove the listeners, destroy() will additionally stop the loaders
+        if (isFinishing()) {
+            loaderManager.destroy();
+        } else {
+            loaderManager.detach();
+        }
+    }
+}
+```
+
+To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onStop()`.
+
+```java
+public class MyLoader extends Loader<String> {
+    // Convenience for loaderManager.init()
+    public static final RetainState.OnCreate<MyLoader> CREATE = new RetainState.OnCreate<MyLoader>() {
+        @Override
+        public MyLoader onCreate() {
+            return new MyLoader();
+        }
+    };
+    
+    @Override
+    protected void onStart() {
+        // Note loader doesn't handle threading, you have to do that yourself.
+        api.doAsync(new ApiCallback() {
+          public void onResult(String result) {
+            // Make sure this happens on the main thread!
+            deliverResult(result);
+          }
+        });
+    }
+
+    // Overriding this method is optional, but if you can cancel your call when it's no longer needed, you should.
+    @Override
+    protected void onStop() {
+        api.cancel();
+    }
+}
+```
