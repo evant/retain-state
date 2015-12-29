@@ -46,7 +46,7 @@ public class MainActivity extends BaseActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     
-    model = RetainState.get(this).state(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
+    model = RetainState.get(this).retain(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
       @Override
       public MyRetainedModel onCreate() {
         return new MyRetainedModel();
