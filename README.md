@@ -96,7 +96,7 @@ compile 'me.tatarka.retainstate:loader:0.1'
 
 ## Usage
 
-You obtain an instance of `LoaderManager` using retain-state to retain it, then you initilize one or more loaders with callbacks. Finnally you use the methods `start()`, `stop()`, and `restart()` on the loader to load the data. The callbacks will automatically re-deliver the correct results on a configuration change.
+You obtain an instance of `LoaderManager` using retain-state to retain it, then you initilize one or more loaders with callbacks. Finnally you use the methods `start()` or `restart()` on the loader to load the data and `cancel()` to cancel it. The callbacks will automatically re-deliver the correct results on a configuration change. Note: you do have to do a little cleanup when your Activity is destroyed to detach the callbacks.
 
 ```java
 public class MainActivity extends BaseActivity {
