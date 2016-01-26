@@ -1,20 +1,26 @@
-package me.tatarka.retainstate.sample;
+package me.tatarka.retainstate.sample.dagger;
 
 
-import android.app.Fragment;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import javax.inject.Inject;
+
 import me.tatarka.loader.Loader;
 import me.tatarka.loader.LoaderManager;
 import me.tatarka.retainstate.RetainState;
+import me.tatarka.retainstate.sample.ModelLoader;
+import me.tatarka.retainstate.sample.R;
+import me.tatarka.retainstate.sample.dagger.Dagger;
 
-public class MyFragment extends Fragment {
-    private LoaderManager loaderManager;
+public class DaggerFragment extends Fragment {
+    @Inject
+    LoaderManager loaderManager;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -28,7 +34,7 @@ public class MyFragment extends Fragment {
 
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
-        loaderManager = RetainState.get(getActivity()).retain(R.id.result_load_from_fragment, LoaderManager.CREATE);
+        Dagger.retained(R.id.result_load_from_fragment, getContext()).inject(this);
 
         final TextView textView = (TextView) view.findViewById(R.id.result_load_from_fragment);
         Button button = (Button) view.findViewById(R.id.button_load_from_fragment);

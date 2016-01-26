@@ -19,7 +19,7 @@ public class ModelLoader extends Loader<String> {
     private Thread thread;
 
     @Override
-    protected void onStart() {
+    protected void onStart(final Receiver receiver) {
         thread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -31,7 +31,8 @@ public class ModelLoader extends Loader<String> {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        deliverResult("Async Load finished");
+                        receiver.deliverResult("Async Load finished");
+                        receiver.complete();
                     }
                 });
             }
@@ -40,8 +41,9 @@ public class ModelLoader extends Loader<String> {
     }
 
     @Override
-    protected void onStop() {
+    protected void onCancel() {
         thread.interrupt();
+        handler.removeCallbacksAndMessages(null);
         thread = null;
     }
 }

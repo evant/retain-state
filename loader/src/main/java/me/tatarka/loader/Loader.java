@@ -5,12 +5,12 @@ import android.support.annotation.Nullable;
 
 /**
  * A loader helps connect async operations to your views. It is retained across configuration
- * changes with {@link LoaderManager}. You run your operation in {@link #onStart()} and deliver the
- * result with {@link #deliverResult(Object)}. Note that {@link #onStart()} is <em>not</em> run in a
- * background thread. You should handle threading yourself with an {@link android.os.AsyncTask} or
- * other mechanism. The result will be cached and re-delivered after a configuration change. You may
- * also optionally implement {@link #onStop()} if you can cancel your work when it is no longer
- * needed.
+ * changes with {@link LoaderManager}. You run your operation in {@link #onStart(Receiver)}} and
+ * deliver the result with {@link Receiver#deliverResult(Object)}. Note that {@link
+ * #onStart(Receiver)}} is <em>not</em> run in a background thread. You should handle threading
+ * yourself with an {@link android.os.AsyncTask} or other mechanism. The result will be cached and
+ * re-delivered after a configuration change. You may also optionally implement {@link #onCancel()}
+ * if you can cancel your work when it is no longer needed.
  *
  * @param <T> The type of result that the loader will deliver
  */
@@ -21,12 +21,14 @@ public abstract class Loader<T> {
 
     @Nullable
     private Callbacks<T> callbacks;
+    @Nullable
+    private Receiver receiver;
     private T cachedResult;
     private int state;
 
     /**
-     * Starts the loader if it's not already running, calling {@link #onStart()} and triggering
-     * {@link Callbacks#onLoaderStart()}. This must be called on the main thread.
+     * Starts the loader if it's not already running, calling {@link #onStart(Receiver)}} and
+     * triggering {@link Callbacks#onLoaderStart()}. This must be called on the main thread.
      */
     @MainThread
     public final void start() {
@@ -35,37 +37,42 @@ public abstract class Loader<T> {
             if (callbacks != null) {
                 callbacks.onLoaderStart();
             }
-            onStart();
+            receiver = new Receiver();
+            onStart(receiver);
         }
     }
 
     /**
-     * Stops the loader if it's running, calling {@link #onStop()}. This must be called on the main
-     * thread.
+     * Cancels the loader if it's running, calling {@link #onCancel()} and removing any cached data.
+     * This must be called on the main thread.
      */
     @MainThread
-    public final void stop() {
+    public final void cancel() {
         cachedResult = null;
+        if (receiver != null) {
+            receiver.myState = Receiver.CANCELED;
+            receiver = null;
+        }
         if (isRunning()) {
-            onStop();
+            onCancel();
         }
         state = 0;
     }
 
     /**
-     * Forces the loader to restart. This is a convenience method for calling {@link #stop()}
+     * Forces the loader to restart. This is a convenience method for calling {@link #cancel()}
      * followed by {@link #start()}. This must be called on the main thread.
      */
     @MainThread
     public final void restart() {
-        stop();
+        cancel();
         start();
     }
 
     /**
      * Returns true if the loader is running. That is, if it has been started and not stopped and
-     * {@link #complete()} has not been called. If this is true than you may expect one or more
-     * results to be delivered.
+     * {@link Receiver#complete()} has not been called. If this is true than you may expect one or
+     * more results to be delivered.
      */
     public final boolean isRunning() {
         return (state & STATE_RUNNING) == STATE_RUNNING;
@@ -88,48 +95,36 @@ public abstract class Loader<T> {
     }
 
     /**
+     * Returns true if the loader has non-null callbacks attached with {@link
+     * #setCallbacks(Callbacks)}.
+     */
+    public final boolean isAttached() {
+        return callbacks != null;
+    }
+
+    /**
      * Do your loader work. This is run on the main thread so you are expected to handle threading
      * yourself either by using an {@link android.os.AsyncTask} or other mechanism. When you have
-     * one or more results you should call {@link #deliverResult(Object)} and then call {@link
-     * #complete()} when you are done.
+     * one or more results you should call {@link Receiver#deliverResult(Object)} and then call
+     * {@link Receiver#complete()} when you are done.
      */
-    protected abstract void onStart();
+    protected abstract void onStart(final Receiver receiver);
 
     /**
-     * Optionally stop doing work because the result is no longer needed. This will only be called
+     * Optionally cancel doing work because the result is no longer needed. This will only be called
      * if the loader has been started and is running. This is run on the main thread.
      */
-    protected void onStop() {
-
+    protected void onCancel() {
     }
 
     /**
-     * Deliver a result to {@link Callbacks#onLoaderResult(Object)}. When you are done delivering
-     * results you should call {@link #complete()}. This must be run on the main thread.
+     * Set the callbacks for the loader. Data will be immediately delivered at this point of if the
+     * loader already has it. Otherwise, {@link Callbacks#onLoaderStart()} will be called to give
+     * you the opportunity to show any loading ui. You may pass in null to clear the callbacks. This
+     * must be called on the main thread.
      */
     @MainThread
-    protected final void deliverResult(T result) {
-        state |= STATE_HAS_RESULT;
-        cachedResult = result;
-        if (callbacks != null) {
-            callbacks.onLoaderResult(result);
-        }
-    }
-
-    /**
-     * Marks the loader as complete and triggers {@link Callbacks#onLoaderComplete()}.
-     */
-    @MainThread
-    protected final void complete() {
-        state &= ~STATE_RUNNING;
-        state |= STATE_COMPLETED;
-        if (callbacks != null) {
-            callbacks.onLoaderComplete();
-        }
-    }
-
-    @MainThread
-    final void setCallbacks(@Nullable Callbacks<T> callbacks) {
+    public final void setCallbacks(@Nullable Callbacks<T> callbacks) {
         this.callbacks = callbacks;
         if (callbacks != null) {
             if (hasResult()) {
@@ -138,6 +133,57 @@ public abstract class Loader<T> {
                 callbacks.onLoaderStart();
             }
             if (isCompleted()) {
+                callbacks.onLoaderComplete();
+            }
+        }
+    }
+
+    /**
+     * Receives results from the loader and notifies the loader's callbacks.
+     */
+    public class Receiver {
+        private static final int CANCELED = 1;
+        private static final int COMPLETE = 2;
+
+        private int myState = 0;
+
+        /**
+         * Deliver a result to {@link Callbacks#onLoaderResult(Object)}. When you are done
+         * delivering results you should call {@link #complete()}. If the loader has already been
+         * canceled, then the result is ignored as it is not expected to be used. This must be run
+         * on the main thread.
+         */
+        @MainThread
+        public final void deliverResult(T result) {
+            if ((myState & CANCELED) == CANCELED) {
+                return;
+            }
+            if ((myState & COMPLETE) == COMPLETE) {
+                throw new IllegalStateException("cannot deliver result after complete()");
+            }
+            state |= STATE_HAS_RESULT;
+            cachedResult = result;
+            if (callbacks != null) {
+                callbacks.onLoaderResult(result);
+            }
+        }
+
+        /**
+         * Marks the loader as complete and triggers {@link Callbacks#onLoaderComplete()} If the
+         * loader has already been canceled then the call will be ignored.
+         */
+        @MainThread
+        public final void complete() {
+            if ((myState & CANCELED) == CANCELED) {
+                return;
+            }
+            if ((myState & COMPLETE) == COMPLETE) {
+                throw new IllegalStateException("complete() already called");
+            }
+            myState = COMPLETE;
+            state &= ~STATE_RUNNING;
+            state |= STATE_COMPLETED;
+            if (callbacks != null) {
                 callbacks.onLoaderComplete();
             }
         }

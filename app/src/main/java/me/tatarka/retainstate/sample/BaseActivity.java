@@ -5,7 +5,7 @@ import android.support.v7.app.AppCompatActivity;
 
 import me.tatarka.retainstate.RetainState;
 
-public class BaseActivity extends AppCompatActivity implements RetainState.Provider {
+public abstract class BaseActivity extends AppCompatActivity implements RetainState.Provider {
     private RetainState retainState;
 
     @Override
@@ -24,3 +24,4 @@ public class BaseActivity extends AppCompatActivity implements RetainState.Provi
         return retainState;
     }
 }
+

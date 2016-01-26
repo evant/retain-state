@@ -9,6 +9,8 @@ import org.mockito.Spy;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -20,7 +22,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 public class LoaderTest {
 
     @Spy
-    Loader<String> loader;
+    TestLoader<String> loader;
 
     @Before
     public void setup() {
@@ -55,7 +57,7 @@ public class LoaderTest {
     public void startingLoaderCallsOnStart() {
         loader.start();
 
-        verify(loader).onStart();
+        verify(loader).onStart(any(Loader.Receiver.class));
     }
 
     @Test
@@ -110,22 +112,22 @@ public class LoaderTest {
 
     @Test
     public void stopWithoutStartDoesNothing() {
-        loader.stop();
+        loader.cancel();
 
-        verify(loader, never()).onStop();
+        verify(loader, never()).onCancel();
     }
 
     @Test
     public void startStopCallsOnStop() {
         loader.start();
-        loader.stop();
-        verify(loader).onStop();
+        loader.cancel();
+        verify(loader).onCancel();
     }
 
     @Test
     public void startStopIsNotRunning() {
         loader.start();
-        loader.stop();
+        loader.cancel();
 
         assertFalse(loader.isRunning());
     }
@@ -133,7 +135,7 @@ public class LoaderTest {
     @Test
     public void startStopHasNoResult() {
         loader.start();
-        loader.stop();
+        loader.cancel();
 
         assertFalse(loader.hasResult());
     }
@@ -142,9 +144,9 @@ public class LoaderTest {
     public void startCompleteStopDoesNotCallOnStop() {
         loader.start();
         loader.complete();
-        loader.stop();
+        loader.cancel();
 
-        verify(loader, never()).onStop();
+        verify(loader, never()).onCancel();
     }
 
     @Test
@@ -197,7 +199,7 @@ public class LoaderTest {
         verify(callbacks).onLoaderResult(eq("test"));
         verifyNoMoreInteractions(callbacks);
     }
-    
+
     @Test
     public void completeCallsCallbacksLoaderComplete() {
         Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
@@ -209,7 +211,7 @@ public class LoaderTest {
         verify(callbacks).onLoaderComplete();
         verifyNoMoreInteractions(callbacks);
     }
-    
+
     @Test
     public void completedCallsCallbacksLoaderComplete() {
         Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
@@ -219,5 +221,54 @@ public class LoaderTest {
 
         verify(callbacks).onLoaderComplete();
         verifyNoMoreInteractions(callbacks);
+    }
+
+    @Test
+    public void deliverResultAfterComplete() {
+        Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
+        loader.setCallbacks(callbacks);
+        loader.start();
+        loader.complete();
+
+        try {
+            loader.deliverResult("test");
+            fail();
+        } catch (IllegalStateException e) {
+            // pass
+        }
+
+        verify(callbacks).onLoaderStart();
+        verify(callbacks).onLoaderComplete();
+        verifyNoMoreInteractions(callbacks);
+    }
+
+    @Test
+    public void completeTwice() {
+        Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
+        loader.setCallbacks(callbacks);
+        loader.start();
+        loader.complete();
+
+        try {
+            loader.complete();
+            fail();
+        } catch (IllegalStateException e) {
+            // pass
+        }
+
+        verify(callbacks).onLoaderStart();
+        verify(callbacks).onLoaderComplete();
+        verifyNoMoreInteractions(callbacks);
+    }
+
+    @Test
+    public void deliverResultAfterCancel() {
+        Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
+        loader.setCallbacks(callbacks);
+        loader.start();
+        loader.cancel();
+        loader.deliverResult("test");
+
+        verify(callbacks, never()).onLoaderResult("test");
     }
 }

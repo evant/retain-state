@@ -11,6 +11,10 @@ import me.tatarka.retainstate.RetainState;
  */
 public class LoaderManager {
 
+    /**
+     * Convenience {@link me.tatarka.retainstate.RetainState.OnCreate} for when you don't have
+     * method references.
+     */
     public static final RetainState.OnCreate<LoaderManager> CREATE = new RetainState.OnCreate<LoaderManager>() {
         @Override
         public LoaderManager onCreate() {
@@ -23,20 +27,19 @@ public class LoaderManager {
     /**
      * Initializes a loader, creating it if it doesn't already exist.
      *
-     * @param id        The id to init the loader with, this must be unique for this loader
-     *                  manager.
-     * @param create    Method for creating the loader if it does not already exist.
-     * @param callbacks The loader callbacks. These may be called immediately if the loader is
-     *                  already running.
+     * @param id     The id to init the loader with, this must be unique for this loader manager.
+     * @param create Method for creating the loader if it does not already exist.
      */
-    public <T, L extends Loader<T>> L init(int id, RetainState.OnCreate<L> create, Loader.Callbacks<T> callbacks) {
+    public <T, L extends Loader<T>> L init(int id, RetainState.OnCreate<L> create) {
         @SuppressWarnings("unchecked")
         L loader = (L) loaders.get(id);
         if (loader == null) {
             loader = create.onCreate();
             loaders.put(id, loader);
         }
-        loader.setCallbacks(callbacks);
+        if (loader.isAttached()) {
+            throw new IllegalStateException("Loader " + loader + " already has callbacks. Make sure you are using unique ids and that you are calling either detach() or destroy() when the Activity is destroyed.");
+        }
         return loader;
     }
 
@@ -47,7 +50,7 @@ public class LoaderManager {
         Loader<?> loader = loaders.get(id);
         if (loader != null) {
             loader.setCallbacks(null);
-            loader.stop();
+            loader.cancel();
             loaders.remove(id);
         }
     }
@@ -74,7 +77,7 @@ public class LoaderManager {
             Loader<?> loader = loaders.get(i);
             if (loader != null) {
                 loader.setCallbacks(null);
-                loader.stop();
+                loader.cancel();
             }
         }
     }
