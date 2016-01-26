@@ -1,5 +1,6 @@
 # retain-state
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/me.tatarka.retainstate/retainstate/badge.svg?style=flat)](https://maven-badges.herokuapp.com/maven-central/me.tatarka.retainstate/retainstate)
+
 A dead simple way to retain some state thought configuration changes on Android
 
 ## What? Why?
