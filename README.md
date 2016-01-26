@@ -4,9 +4,7 @@ A dead simple way to retain some state thought configuration changes on Android
 ## What? Why?
 Loading some data in a background thread and then showing it in your app is so common it should be trivial to do. Unfortunately Android does not make this easy. You have to deal with the fact that Activities can be destroyed out from under you at any time. This even happens even on a configuration change where you probably want to just continue whatever background work you are doing and show it in the newly-created Activity. Android does provided some components to allow to do this (Loaders, Fragments with `setRetainInstance(true)`, Services) but they are all overly complicated and have clunky and sometimes inflexible apis.
 
-Luckily, there is a pair of methods that make retaining some state between configuration changes simple and easy and it's been there since Api 1: [onRetainNonConfigurationInstance](http://developer.android.com/reference/android/app/Activity.html#onRetainNonConfigurationInstance%28%29) and [getLastNonConfigutationInstance](http://developer.android.com/reference/android/app/Activity.html#getLastNonConfigurationInstance%28%29). This pair of methods allow you to preserve state across orientation changes! This library proviveds a super-simple (and by simple I mean < 100 loc) way to hook into this mechanism.
-
-## Download
+Luckily, there is a pair of methods that make retaining some state between configuration changes simple and easy and it's been there since Api 1: [onRetainNonConfigurationInstance](http://developer.android.com/reference/android/app/Activity.html#onRetainNonConfigurationInstance%28%29) and [getLastNonConfigutationInstance](http://developer.android.com/reference/android/app/Activity.html#getLastNonConfigurationInstance%28%29). This pair of methods allow you to preserve state across orientation changes! This library proviveds a super-simple (and by simple I mean < 200 loc) way to hook into this mechanism.
 This library is currently not on maven central. However, it's so small that it's fine for you to just copy the one class into your application. https://raw.githubusercontent.com/evant/retain-state/master/retainstate/src/main/java/me/tatarka/retainstate/RetainState.java
 
 ## Usage
@@ -18,7 +16,7 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    retainState = new RetainState(this);
+    retainState = new RetainState(getLastNonConfigurationInstance());
     super.onCreate(savedInstanceState);
   }
 
@@ -34,7 +32,7 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 }
 ```
 
-Note: If you are using `FragmentActivity` or `AppCompatActivity` you have to override `onRetainCustomNonConfigurationInstance()` instead.
+Note: If you are using `FragmentActivity` or `AppCompatActivity` you have to use `getLastCustomNonConfigurationInstance()` and override `onRetainCustomNonConfigurationInstance()` instead.
 
 Now you just have to use `RetainState` to obtain the instance you want to retain.
 
@@ -46,7 +44,7 @@ public class MainActivity extends BaseActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     
-    model = RetainState.get(this).state(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
+    model = RetainState.get(this).retain(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
       @Override
       public MyRetainedModel onCreate() {
         return new MyRetainedModel();
@@ -78,3 +76,94 @@ Use the new Fragment API setRetainInstance(boolean) instead; this is also availa
 This is silly, there are many instances when using a Fragment doesn't make sense, and Fragments retained this way can't even be nested! See https://code.google.com/p/android/issues/detail?id=151346 for more reasons why these methods should not be deprecated.
 
 Additionally, these methods are used heavily by the support library to backport Loaders and Fragments. It would be infeasible for google to actually remove these methods any time in the near future, if at all because of this.
+
+# Loader
+
+This repo also includes a super-simple loader implementation built on top of retain-state. It lets you easily load something in the background and then get callbacks on the main thread that fire at the approriate times.
+
+## Download
+
+Loader is implemented in https://raw.githubusercontent.com/evant/retain-state/master/loader/src/main/java/me/tatarka/loader/Loader.java and https://raw.githubusercontent.com/evant/retain-state/master/loader/src/main/java/me/tatarka/loader/LoaderManager.java this may end up on maven central at some point.
+
+## Usage
+
+You obtain an instance of `LoaderManager` using retain-state to retain it, then you initilize one or more loaders with callbacks. Finnally you use the methods `start()`, `stop()`, and `restart()` on the loader to load the data. The callbacks will automatically re-deliver the correct results on a configuration change.
+
+```java
+public class MainActivity extends BaseActivity {
+    private LoaderManager loaderManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        loaderManager = RetainState.get(this).retain(R.id.result_load_from_activity, LoaderManager.CREATE);
+
+        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.Callbacks<String>() {
+            @Override
+            public void onLoaderStart() {
+              // Update your ui to show you are loading something
+            }
+
+            @Override
+            public void onLoaderResult(String result) {
+              // Update your ui with the result
+            }
+
+            @Override
+            public void onLoaderComplete() {
+              // Optionally do something when the loader has completed
+            }
+        });
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loader.restart();
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Loader cleanup, detach() will remove the listeners, destroy() will additionally stop the loaders
+        if (isFinishing()) {
+            loaderManager.destroy();
+        } else {
+            loaderManager.detach();
+        }
+    }
+}
+```
+
+To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onStop()`.
+
+```java
+public class MyLoader extends Loader<String> {
+    // Convenience for loaderManager.init()
+    public static final RetainState.OnCreate<MyLoader> CREATE = new RetainState.OnCreate<MyLoader>() {
+        @Override
+        public MyLoader onCreate() {
+            return new MyLoader();
+        }
+    };
+    
+    @Override
+    protected void onStart() {
+        // Note loader doesn't handle threading, you have to do that yourself.
+        api.doAsync(new ApiCallback() {
+          public void onResult(String result) {
+            // Make sure this happens on the main thread!
+            deliverResult(result);
+            complete();
+          }
+        });
+    }
+
+    // Overriding this method is optional, but if you can cancel your call when it's no longer needed, you should.
+    @Override
+    protected void onStop() {
+        api.cancel();
+    }
+}
+```
