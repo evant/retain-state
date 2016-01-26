@@ -1,4 +1,6 @@
 apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'signing'
 
 android {
     compileSdkVersion 23
@@ -16,3 +18,5 @@ dependencies {
     testCompile 'junit:junit:4.12'
     testCompile "org.robolectric:robolectric:3.0"
 }
+
+apply from: '../publish.gradle'

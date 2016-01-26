@@ -14,7 +14,7 @@ public class TestLoader<T> extends Loader<T> {
 
     private Receiver receiver;
     private boolean isCanceled;
-
+    
     @Override
     protected void onStart(Receiver receiver) {
         this.receiver = receiver;
