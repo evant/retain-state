@@ -98,7 +98,8 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         loaderManager = RetainState.get(this).retain(R.id.result_load_from_activity, LoaderManager.CREATE);
 
-        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.Callbacks<String>() {
+        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE);
+        loader.setCallbacks(new Loader.Callbacks<String>() {
             @Override
             public void onLoaderStart() {
               // Update your ui to show you are loading something
@@ -136,7 +137,7 @@ public class MainActivity extends BaseActivity {
 }
 ```
 
-To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onStop()`.
+To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onCancel()`.
 
 ```java
 public class MyLoader extends Loader<String> {
@@ -149,20 +150,20 @@ public class MyLoader extends Loader<String> {
     };
     
     @Override
-    protected void onStart() {
+    protected void onStart(Receiver receiver) {
         // Note loader doesn't handle threading, you have to do that yourself.
         api.doAsync(new ApiCallback() {
           public void onResult(String result) {
             // Make sure this happens on the main thread!
-            deliverResult(result);
-            complete();
+            receiver.deliverResult(result);
+            receiver.complete();
           }
         });
     }
 
     // Overriding this method is optional, but if you can cancel your call when it's no longer needed, you should.
     @Override
-    protected void onStop() {
+    protected void onCancel() {
         api.cancel();
     }
 }
