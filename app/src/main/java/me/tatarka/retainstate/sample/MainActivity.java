@@ -22,8 +22,7 @@ public class MainActivity extends BaseActivity {
         final TextView textView = (TextView) findViewById(R.id.result_load_from_activity);
         final Button button = (Button) findViewById(R.id.button_load_from_activity);
 
-        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE);
-        loader.setCallbacks(new Loader.Callbacks<String>() {
+        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {
                 textView.setText("Loading...");
@@ -32,11 +31,6 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onLoaderResult(String result) {
                 textView.setText(result);
-            }
-
-            @Override
-            public void onLoaderComplete() {
-
             }
         });
 

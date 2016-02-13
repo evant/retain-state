@@ -39,8 +39,7 @@ public class MyLayout extends LinearLayout {
             return;
         }
         loaderManager = RetainState.get(getContext()).retain(R.id.result_load_from_custom_view, LoaderManager.CREATE);
-        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE);
-        loader.setCallbacks(new Loader.CallbacksAdapter<String>() {
+        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {
                 textView.setText("Loading...");

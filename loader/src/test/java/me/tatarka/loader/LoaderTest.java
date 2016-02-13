@@ -3,9 +3,10 @@ package me.tatarka.loader;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
+import org.robolectric.RobolectricGradleTestRunner;
+import org.robolectric.annotation.Config;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -18,7 +19,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 
-@RunWith(JUnit4.class)
+@RunWith(RobolectricGradleTestRunner.class)
+@Config(constants = BuildConfig.class, sdk = 21)
 public class LoaderTest {
 
     @Spy
@@ -270,5 +272,29 @@ public class LoaderTest {
         loader.deliverResult("test");
 
         verify(callbacks, never()).onLoaderResult("test");
+    }
+
+    @Test
+    public void destroyCallsOnDestroy() {
+        loader.destroy();
+
+        verify(loader).onDestroy();
+    }
+
+    @Test
+    public void destroyClearsCallbacks() {
+        Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
+        loader.setCallbacks(callbacks);
+        loader.destroy();
+
+        assertFalse(loader.isAttached());
+    }
+
+    @Test
+    public void destroyCancelsRunning() {
+        loader.start();
+        loader.destroy();
+
+        assertTrue(loader.isCanceled());
     }
 }

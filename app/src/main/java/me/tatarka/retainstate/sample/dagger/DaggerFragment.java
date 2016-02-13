@@ -39,8 +39,7 @@ public class DaggerFragment extends Fragment {
         final TextView textView = (TextView) view.findViewById(R.id.result_load_from_fragment);
         Button button = (Button) view.findViewById(R.id.button_load_from_fragment);
 
-        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE);
-        loader.setCallbacks(new Loader.Callbacks<String>() {
+        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {
                 textView.setText("Loading...");
@@ -50,13 +49,8 @@ public class DaggerFragment extends Fragment {
             public void onLoaderResult(String result) {
                 textView.setText(result);
             }
-
-            @Override
-            public void onLoaderComplete() {
-
-            }
         });
-
+        
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

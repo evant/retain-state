@@ -10,8 +10,8 @@ import java.util.NoSuchElementException;
 
 public class RetainState implements Iterable<Object> {
     /**
-     * Attempts to state the retain state for the given Activity with the given context. For this to
-     * work, the context <em>must</em> by the Activity or a {@link ContextWrapper} around it, and
+     * Attempts to get the retain state for the given Activity with the given context. For this to
+     * work, the context <em>must</em> be the Activity or a {@link ContextWrapper} around it, and
      * that Activity <em>must</em> implement {@link Provider}.
      */
     public static RetainState get(Context context) {

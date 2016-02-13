@@ -3,8 +3,10 @@ package me.tatarka.loader;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricGradleTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -28,23 +30,23 @@ public class LoaderManagerTest {
 
     @Test
     public void init() {
-        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create());
+        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create(), null);
 
         assertNotNull(loader);
     }
 
     @Test
     public void initTwice() {
-        TestLoader<String> loader1 = loaderManager.init(0, TestLoader.<String>create());
-        TestLoader<String> loader2 = loaderManager.init(0, TestLoader.<String>create());
+        TestLoader<String> loader1 = loaderManager.init(0, TestLoader.<String>create(), null);
+        TestLoader<String> loader2 = loaderManager.init(0, TestLoader.<String>create(), null);
 
         assertTrue(loader1 == loader2);
     }
 
     @Test
     public void initDifferentIds() {
-        TestLoader<String> loader1 = loaderManager.init(0, TestLoader.<String>create());
-        TestLoader<String> loader2 = loaderManager.init(1, TestLoader.<String>create());
+        TestLoader<String> loader1 = loaderManager.init(0, TestLoader.<String>create(), null);
+        TestLoader<String> loader2 = loaderManager.init(1, TestLoader.<String>create(), null);
 
         assertFalse(loader1 == loader2);
     }
@@ -52,8 +54,7 @@ public class LoaderManagerTest {
     @Test
     public void detach() {
         Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
-        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create());
-        loader.setCallbacks(callbacks);
+        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create(), callbacks);
         loader.start();
         loaderManager.detach();
         loader.deliverResult("test");
@@ -65,8 +66,7 @@ public class LoaderManagerTest {
     @Test
     public void destroy() {
         Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
-        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create());
-        loader.setCallbacks(callbacks);
+        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create(), callbacks);
         loader.start();
         loaderManager.destroy();
         loader.deliverResult("test");
@@ -78,29 +78,28 @@ public class LoaderManagerTest {
 
     @Test
     public void detachAndReattach() {
-        Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
-        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create());
-        loader.setCallbacks(callbacks);
+        Loader.Callbacks<String> callbacks1 = mock(Loader.Callbacks.class);
+        Loader.Callbacks<String> callbacks2 = mock(Loader.Callbacks.class);
+        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create(), callbacks1);
         loader.start();
         loaderManager.detach();
         loader.deliverResult("test");
 
-        loader = loaderManager.init(0, TestLoader.<String>create());
-        loader.setCallbacks(callbacks);
+        loader = loaderManager.init(0, TestLoader.<String>create(), callbacks2);
 
-        verify(callbacks).onLoaderStart();
-        verify(callbacks).onLoaderResult(eq("test"));
-        verifyNoMoreInteractions(callbacks);
+        verify(callbacks1).onLoaderStart();
+        verifyNoMoreInteractions(callbacks1);
+        verify(callbacks2).onLoaderResult(eq("test"));
+        verifyNoMoreInteractions(callbacks2);
     }
 
     @Test
     public void attachTwice() {
         Loader.Callbacks<String> callbacks = mock(Loader.Callbacks.class);
-        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create());
-        loader.setCallbacks(callbacks);
+        TestLoader<String> loader = loaderManager.init(0, TestLoader.<String>create(), callbacks);
 
         try {
-            loaderManager.init(0, TestLoader.<String>create());
+            loaderManager.init(0, TestLoader.<String>create(), null);
             fail();
         } catch (IllegalStateException e) {
             // pass

@@ -45,8 +45,7 @@ public class DaggerLayout extends LinearLayout {
         }
         Dagger.retained(R.id.result_load_from_custom_view, getContext()).inject(this);
 
-        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE);
-        loader.setCallbacks(new Loader.CallbacksAdapter<String>() {
+        final ModelLoader loader = loaderManager.init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {
                 textView.setText("Loading...");

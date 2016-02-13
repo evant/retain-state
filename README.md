@@ -11,7 +11,7 @@ Luckily, there is a pair of methods that make retaining some state between confi
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:retainstate:0.1'
+compile 'me.tatarka.retainstate:retainstate:0.2'
 ```
 
 ## Usage
@@ -91,7 +91,11 @@ This repo also includes a super-simple loader implementation built on top of ret
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:loader:0.1'
+compile 'me.tatarka.retainstate:loader:0.2'
+// Contains an AsyncTaskLoader and CursorLoader to mirror the ones in the support lib.
+compile 'me.tatarka.retainstate:loader-support:0.2'
+// Takes an rxjava observable.
+compile 'me.tatarka.retainstate:loader-rx:0.2'
 ```
 
 ## Usage
@@ -107,8 +111,7 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         loaderManager = RetainState.get(this).retain(R.id.result_load_from_activity, LoaderManager.CREATE);
 
-        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE);
-        loader.setCallbacks(new Loader.Callbacks<String>() {
+        final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {
               // Update your ui to show you are loading something
@@ -136,7 +139,8 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Loader cleanup, detach() will remove the listeners, destroy() will additionally stop the loaders
+        // Loader cleanup, detach() will remove the listeners, 
+        // destroy() will additionally cancel and clean up the loaders
         if (isFinishing()) {
             loaderManager.destroy();
         } else {
@@ -146,7 +150,7 @@ public class MainActivity extends BaseActivity {
 }
 ```
 
-To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onCancel()`.
+To implement a loader, you subclass `Loader` and override `onStart()` and optionally `onCancel()` and `onDestroy()`.
 
 ```java
 public class MyLoader extends Loader<String> {
@@ -174,6 +178,12 @@ public class MyLoader extends Loader<String> {
     @Override
     protected void onCancel() {
         api.cancel();
+    }
+    
+    // Overriding this method is optional and allows you to clean up any resources.
+    @Override
+    protected void onDestroy() {
+        
     }
 }
 ```

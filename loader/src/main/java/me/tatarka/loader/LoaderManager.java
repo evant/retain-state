@@ -27,10 +27,12 @@ public class LoaderManager {
     /**
      * Initializes a loader, creating it if it doesn't already exist.
      *
-     * @param id     The id to init the loader with, this must be unique for this loader manager.
-     * @param create Method for creating the loader if it does not already exist.
+     * @param id        The id to init the loader with, this must be unique for this loader
+     *                  manager.
+     * @param create    Method for creating the loader if it does not already exist.
+     * @param callbacks The loader callbacks.
      */
-    public <T, L extends Loader<T>> L init(int id, RetainState.OnCreate<L> create) {
+    public <T, L extends Loader<T>> L init(int id, RetainState.OnCreate<L> create, Loader.Callbacks<T> callbacks) {
         @SuppressWarnings("unchecked")
         L loader = (L) loaders.get(id);
         if (loader == null) {
@@ -40,6 +42,7 @@ public class LoaderManager {
         if (loader.isAttached()) {
             throw new IllegalStateException("Loader " + loader + " already has callbacks. Make sure you are using unique ids and that you are calling either detach() or destroy() when the Activity is destroyed.");
         }
+        loader.setCallbacks(callbacks);
         return loader;
     }
 
@@ -69,16 +72,16 @@ public class LoaderManager {
     }
 
     /**
-     * Detaches and stops all loaders. You may want to call this when you know you won't need any
+     * Detaches and destroys all loaders. You should call this when you know you won't need any
      * anymore like when your activity is finishing.
      */
     public void destroy() {
         for (int i = 0, size = loaders.size(); i < size; i++) {
             Loader<?> loader = loaders.get(i);
             if (loader != null) {
-                loader.setCallbacks(null);
-                loader.cancel();
+                loader.destroy();
             }
         }
+        loaders.clear();
     }
 }

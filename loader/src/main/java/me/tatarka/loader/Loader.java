@@ -1,7 +1,12 @@
 package me.tatarka.loader;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.MainThread;
 import android.support.annotation.Nullable;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A loader helps connect async operations to your views. It is retained across configuration
@@ -18,13 +23,48 @@ public abstract class Loader<T> {
     private static final int STATE_RUNNING = 1;
     private static final int STATE_HAS_RESULT = 1 << 1;
     private static final int STATE_COMPLETED = 1 << 2;
+    private static final int STATE_DESTROYED = 1 << 3;
+
+    private static final int CALLBACKS_START = 1;
+    private static final int CALLBACKS_RESULT = 2;
+    private static final int CALLBACKS_COMPLETE = 4;
+    
+    private static boolean isRunning(int state) {
+        return (state & STATE_RUNNING) == STATE_RUNNING;
+    }
+    
+    /**
+     * Throws an {@link IllegalStateException} if loader is destroyed.
+     */
+    private static void checkDestroyed(String method, int state) {
+        if ((state & STATE_DESTROYED) == STATE_DESTROYED) {
+            throw new IllegalStateException("cannot call " + method + "() after destroy()");
+        }
+    }
 
     @Nullable
     private Callbacks<T> callbacks;
     @Nullable
     private Receiver receiver;
     private T cachedResult;
-    private int state;
+    private AtomicInteger state = new AtomicInteger();
+
+    private final Handler handler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            int callback = msg.arg1;
+            @SuppressWarnings("unchecked")
+            HandlerArgs<Object> args = (HandlerArgs<Object>) msg.obj;
+            if ((callback & CALLBACKS_RESULT) == CALLBACKS_RESULT) {
+                args.callbacks.onLoaderResult(args.cachedResult);
+            } else if ((callback & CALLBACKS_START) == CALLBACKS_START) {
+                args.callbacks.onLoaderStart();
+            }
+            if ((callback & CALLBACKS_COMPLETE) == CALLBACKS_COMPLETE) {
+                args.callbacks.onLoaderComplete();
+            }
+        }
+    };
 
     /**
      * Starts the loader if it's not already running, calling {@link #onStart(Receiver)}} and
@@ -32,13 +72,17 @@ public abstract class Loader<T> {
      */
     @MainThread
     public final void start() {
-        if (!isRunning()) {
-            state = STATE_RUNNING;
+        int s = state.get();
+        checkDestroyed("start", s);
+        if (!isRunning(s)) {
+            state.set(STATE_RUNNING);
             if (callbacks != null) {
                 callbacks.onLoaderStart();
             }
             receiver = new Receiver();
+            receiver.myState |= Receiver.SYNCHRONOUS;
             onStart(receiver);
+            receiver.myState &= ~Receiver.SYNCHRONOUS;
         }
     }
 
@@ -48,15 +92,18 @@ public abstract class Loader<T> {
      */
     @MainThread
     public final void cancel() {
+        int s = state.get();
+        checkDestroyed("cancel", s);
         cachedResult = null;
         if (receiver != null) {
             receiver.myState = Receiver.CANCELED;
             receiver = null;
         }
-        if (isRunning()) {
+        handler.removeMessages(0);
+        if (isRunning(s)) {
             onCancel();
         }
-        state = 0;
+        state.set(0);
     }
 
     /**
@@ -70,12 +117,27 @@ public abstract class Loader<T> {
     }
 
     /**
+     * Destroys the loader, canceling it if necessary. This is normally called for you by {@link
+     * LoaderManager}. This will trigger {@link #onDestroy()} allowing you to clean up any resources
+     * if necessary. You should not call any other methods on the loader after this.
+     */
+    @MainThread
+    public final void destroy() {
+        int s = state.get();
+        checkDestroyed("destroy", s);
+        cancel();
+        state.set(STATE_DESTROYED);
+        callbacks = null;
+        onDestroy();
+    }
+
+    /**
      * Returns true if the loader is running. That is, if it has been started and not stopped and
      * {@link Receiver#complete()} has not been called. If this is true than you may expect one or
      * more results to be delivered.
      */
     public final boolean isRunning() {
-        return (state & STATE_RUNNING) == STATE_RUNNING;
+        return isRunning(state.get());
     }
 
     /**
@@ -83,7 +145,7 @@ public abstract class Loader<T> {
      * after the loader has been re-attached.
      */
     public final boolean hasResult() {
-        return (state & STATE_HAS_RESULT) == STATE_HAS_RESULT;
+        return (state.get() & STATE_HAS_RESULT) == STATE_HAS_RESULT;
     }
 
     /**
@@ -91,7 +153,7 @@ public abstract class Loader<T> {
      * more results may be delivered and it's no longer running.
      */
     public final boolean isCompleted() {
-        return (state & STATE_COMPLETED) == STATE_COMPLETED;
+        return (state.get() & STATE_COMPLETED) == STATE_COMPLETED;
     }
 
     /**
@@ -118,32 +180,64 @@ public abstract class Loader<T> {
     }
 
     /**
-     * Set the callbacks for the loader. Data will be immediately delivered at this point of if the
-     * loader already has it. Otherwise, {@link Callbacks#onLoaderStart()} will be called to give
-     * you the opportunity to show any loading ui. You may pass in null to clear the callbacks. This
-     * must be called on the main thread.
+     * Optionally clean up any resources the loader is using when it is destroyed. No methods will
+     * be called on the loader after this.
+     */
+    protected void onDestroy() {
+    }
+
+    /**
+     * Set the callbacks for the loader. This is normally called for you by {@link LoaderManager}.
+     * Data will be delivered of if the loader already has it. Otherwise, {@link
+     * Callbacks#onLoaderStart()} will be called to give you the opportunity to show any loading ui.
+     * You may pass in null to clear the callbacks. This must be called on the main thread.
      */
     @MainThread
-    public final void setCallbacks(@Nullable Callbacks<T> callbacks) {
+    public final void setCallbacks(@Nullable final Callbacks<T> callbacks) {
         this.callbacks = callbacks;
+        handler.removeMessages(0);
         if (callbacks != null) {
+            int methods = 0;
             if (hasResult()) {
-                callbacks.onLoaderResult(cachedResult);
+                methods |= CALLBACKS_RESULT;
             } else if (isRunning()) {
-                callbacks.onLoaderStart();
+                methods |= CALLBACKS_START;
             }
             if (isCompleted()) {
-                callbacks.onLoaderComplete();
+                methods |= CALLBACKS_COMPLETE;
             }
+            dispatchCallbacks(callbacks, methods);
         }
+    }
+
+    /**
+     * So that callback methods are consistently async, we post them to a handler.
+     */
+    private void dispatchCallbacks(Callbacks<T> callbacks, int methods) {
+        Message message = handler.obtainMessage(0);
+        message.obj = new HandlerArgs<>(cachedResult, callbacks);
+        message.arg1 = methods;
+        handler.dispatchMessage(message);
     }
 
     /**
      * Receives results from the loader and notifies the loader's callbacks.
      */
-    public class Receiver {
+    public final class Receiver {
+        /**
+         * If the receiver is canceled, ignore any delivered results.
+         */
         private static final int CANCELED = 1;
+        /**
+         * If the receiver is complete, any calls to {@link #deliverResult(Object)} is an error.
+         */
         private static final int COMPLETE = 2;
+        /**
+         * It's possible that a result is immediately delivered inside {@link
+         * #onStart(Loader.Receiver)}. Because we don't want to surprise our consumer with immediate
+         * results, we should post them to a handler in this case.
+         */
+        private static final int SYNCHRONOUS = 4;
 
         private int myState = 0;
 
@@ -161,10 +255,17 @@ public abstract class Loader<T> {
             if ((myState & COMPLETE) == COMPLETE) {
                 throw new IllegalStateException("cannot deliver result after complete()");
             }
-            state |= STATE_HAS_RESULT;
+
+            int s = state.get();
+            state.set(s | STATE_HAS_RESULT);
+
             cachedResult = result;
             if (callbacks != null) {
-                callbacks.onLoaderResult(result);
+                if ((myState & SYNCHRONOUS) == SYNCHRONOUS) {
+                    dispatchCallbacks(callbacks, CALLBACKS_RESULT);
+                } else {
+                    callbacks.onLoaderResult(result);
+                }
             }
         }
 
@@ -181,10 +282,16 @@ public abstract class Loader<T> {
                 throw new IllegalStateException("complete() already called");
             }
             myState = COMPLETE;
-            state &= ~STATE_RUNNING;
-            state |= STATE_COMPLETED;
+
+            int s = state.get();
+            state.set((s & ~STATE_RUNNING) | STATE_COMPLETED);
+
             if (callbacks != null) {
-                callbacks.onLoaderComplete();
+                if ((myState & SYNCHRONOUS) == SYNCHRONOUS) {
+                    dispatchCallbacks(callbacks, CALLBACKS_COMPLETE);
+                } else {
+                    callbacks.onLoaderComplete();
+                }
             }
         }
     }
@@ -226,6 +333,16 @@ public abstract class Loader<T> {
         @Override
         public void onLoaderComplete() {
 
+        }
+    }
+
+    private static final class HandlerArgs<T> {
+        final T cachedResult;
+        final Callbacks<T> callbacks;
+
+        private HandlerArgs(T cachedResult, Callbacks<T> callbacks) {
+            this.cachedResult = cachedResult;
+            this.callbacks = callbacks;
         }
     }
 }
