@@ -2,4 +2,5 @@
 <resources>
     <item name="root_controller" type="id" />
     <item name="my_controller" type="id" />
+    <item name="my_loader" type="id" />
 </resources>

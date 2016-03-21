@@ -11,7 +11,7 @@ Luckily, there is a pair of methods that make retaining some state between confi
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:retainstate:0.2'
+compile 'me.tatarka.retainstate:retainstate:0.3'
 ```
 
 ## Usage
@@ -23,8 +23,8 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    retainState = new RetainState(getLastNonConfigurationInstance());
-    super.onCreate(savedInstanceState);
+      super.onCreate(savedInstanceState);
+      retainState = new RetainState(getLastNonConfigurationInstance());
   }
 
   @Override
@@ -34,6 +34,9 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   public RetainState getRetainState() {
+      if (retainState == null) {
+          throw new IllegalStateException("RetainState has not yet been initialized");
+      }
       return retainState;
   }
 }
@@ -84,6 +87,44 @@ This is silly, there are many instances when using a Fragment doesn't make sense
 
 Additionally, these methods are used heavily by the support library to backport Loaders and Fragments. It would be infeasible for google to actually remove these methods any time in the near future, if at all because of this.
 
+# Fragments
+
+Optionally, you can extend support to fragments by nesting `RetainState` instances. Included is a library to easily obtain unique id's from fragments. Note that the fragment id's are negative, so you should use positive id's for other things.
+
+```groovy
+compile 'me.tatarka.retainstate:fragment:0.3'
+```
+
+Just make a fragment a provider, similarly to an activity.
+
+```java
+public class BaseFragment extends Fragment implements RetainState.Provider {
+    private RetainState retainState;
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        retainState = RetainState.from(getHost()).retain(RetainStateFragment.getId(this), RetainState.CREATE);
+    }
+
+    @Override
+    public RetainState getRetainState() {
+        if (retainState == null) {
+            throw new IllegalStateException("RetainState has not yet been initialized");
+        }
+        return retainState;
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (getActivity().isFinishing() || isRemoving()) {
+            RetainState.from(getHost()).remove(RetainStateFragment.getId(this));
+        }
+    }
+}
+```
+
 # Loader
 
 This repo also includes a super-simple loader implementation built on top of retain-state. It lets you easily load something in the background and then get callbacks on the main thread that fire at the approriate times.
@@ -91,16 +132,16 @@ This repo also includes a super-simple loader implementation built on top of ret
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:loader:0.2'
+compile 'me.tatarka.retainstate:loader:0.3'
 // Contains an AsyncTaskLoader and CursorLoader to mirror the ones in the support lib.
-compile 'me.tatarka.retainstate:loader-support:0.2'
+compile 'me.tatarka.retainstate:loader-support:0.3'
 // Takes an rxjava observable.
-compile 'me.tatarka.retainstate:loader-rx:0.2'
+compile 'me.tatarka.retainstate:loader-rx:0.3'
 ```
 
 ## Usage
 
-You obtain an instance of `LoaderManager` using retain-state to retain it, then you initilize one or more loaders with callbacks. Finnally you use the methods `start()` or `restart()` on the loader to load the data and `cancel()` to cancel it. The callbacks will automatically re-deliver the correct results on a configuration change. Note: you do have to do a little cleanup when your Activity is destroyed to detach the callbacks.
+You obtain an instance of `LoaderManager` using retain-state to retain it, then you initialize one or more loaders with callbacks. Finally you use the methods `start()` or `restart()` on the loader to load the data and `cancel()` to cancel it. The callbacks will automatically re-deliver the correct results on a configuration change. Note: you do have to do a little cleanup when your Activity is destroyed to detach the callbacks.
 
 ```java
 public class MainActivity extends BaseActivity {
@@ -109,7 +150,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        loaderManager = RetainState.get(this).retain(R.id.result_load_from_activity, LoaderManager.CREATE);
+        loaderManager = RetainState.get(this).retain(R.id.my_loader_manager, LoaderManager.CREATE);
 
         final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
@@ -142,6 +183,49 @@ public class MainActivity extends BaseActivity {
         // Loader cleanup, detach() will remove the listeners, 
         // destroy() will additionally cancel and clean up the loaders
         if (isFinishing()) {
+            loaderManager.destroy();
+        } else {
+            loaderManager.detach();
+        }
+    }
+}
+```
+
+or in a fragment
+
+```java
+public class MyFragment extends BaseFragment {
+    LoaderManager loaderManager;
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        loaderManager = RetainState.get(this).retain(R.id.my_loader_manager, LoaderManager.CREATE);
+    
+        final ModelLoader loader = loaderManager().init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
+            @Override
+            public void onLoaderStart() {
+              // Update your ui to show you are loading something
+            }
+
+            @Override
+            public void onLoaderResult(String result) {
+              // Update your ui with the result
+            }
+        });
+
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loader.restart();
+            }
+        });
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (getActivity().isFinishing() || isRemoving()) {
             loaderManager.destroy();
         } else {
             loaderManager.detach();

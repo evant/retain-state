@@ -36,9 +36,4 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         tools:layout="@layout/fragment_my" />
-
-    <me.tatarka.retainstate.sample.MyLayout
-        android:id="@+id/my_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
 </LinearLayout>

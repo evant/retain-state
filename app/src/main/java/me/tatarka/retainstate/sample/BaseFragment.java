@@ -1,25 +1,22 @@
 package me.tatarka.retainstate.sample;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
 
 import me.tatarka.loader.LoaderManager;
 import me.tatarka.retainstate.RetainState;
+import me.tatarka.retainstate.fragment.RetainStateFragment;
 
-public abstract class BaseActivity extends AppCompatActivity implements RetainState.Provider {
+public class BaseFragment extends Fragment implements RetainState.Provider {
     private RetainState retainState;
     private LoaderManager loaderManager;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        retainState = new RetainState(getLastCustomNonConfigurationInstance());
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        retainState = RetainState.from(getHost()).retain(RetainStateFragment.getId(this), RetainState.CREATE);
         loaderManager = retainState.retain(R.id.my_loader, LoaderManager.CREATE);
-    }
-
-    @Override
-    public Object onRetainCustomNonConfigurationInstance() {
-        return retainState.getState();
     }
 
     public LoaderManager loaderManager() {
@@ -38,13 +35,12 @@ public abstract class BaseActivity extends AppCompatActivity implements RetainSt
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
-        if (isFinishing()) {
+        if (getActivity().isFinishing() || isRemoving()) {
             loaderManager.destroy();
         } else {
             loaderManager.detach();
         }
     }
 }
-

@@ -6,7 +6,7 @@ import me.tatarka.retainstate.RetainState;
 
 /**
  * Manges a set of loaders in the same scope. You should obtain an instance with {@code
- * RetainState.get(context).retain(id, LoaderManager.CREATE) to retain it across configuration
+ * RetainState.from(context).retain(id, LoaderManager.CREATE) to retain it across configuration
  * changes.
  */
 public class LoaderManager {
@@ -47,13 +47,13 @@ public class LoaderManager {
     }
 
     /**
-     * Stops and removes the loader with the given id.
+     * Destroys and removes the loader with the given id.
      */
     public void remove(int id) {
         Loader<?> loader = loaders.get(id);
         if (loader != null) {
             loader.setCallbacks(null);
-            loader.cancel();
+            loader.destroy();
             loaders.remove(id);
         }
     }

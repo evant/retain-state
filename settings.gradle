@@ -1,1 +1,1 @@
-include ':app', ':retainstate', ':loader', ':loader-rx', ':loader-support'
+include ':app', ':retainstate', ':loader', ':loader-rx', ':loader-support', ':fragment'

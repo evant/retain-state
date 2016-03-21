@@ -1,6 +1,5 @@
 package me.tatarka.retainstate;
 
-import android.content.Context;
 import android.content.ContextWrapper;
 import android.util.SparseArray;
 
@@ -9,22 +8,33 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 public class RetainState implements Iterable<Object> {
+
     /**
-     * Attempts to get the retain state for the given Activity with the given context. For this to
-     * work, the context <em>must</em> be the Activity or a {@link ContextWrapper} around it, and
-     * that Activity <em>must</em> implement {@link Provider}.
+     * Convenience {@link OnCreate} for when you want to store a {@code RetainState} in a {@code
+     * RetainState} which is useful for nesting.
      */
-    public static RetainState get(Context context) {
-        if (context == null) {
+    public static final OnCreate<RetainState> CREATE = new OnCreate<RetainState>() {
+        @Override
+        public RetainState onCreate() {
+            return new RetainState(null);
+        }
+    };
+
+    /**
+     * Attempts to get the retain state for the given host. For this to work, the host <em>must</em>
+     * implement {@link Provider} or be a {@link ContextWrapper} around it.
+     */
+    public static RetainState from(Object host) {
+        if (host == null) {
             throw new NullPointerException("context == null");
         }
-        if (context instanceof Provider) {
-            return ((Provider) context).getRetainState();
+        if (host instanceof Provider) {
+            return ((Provider) host).getRetainState();
         }
-        if (context instanceof ContextWrapper) {
-            return get(((ContextWrapper) context).getBaseContext());
+        if (host instanceof ContextWrapper) {
+            return from(((ContextWrapper) host).getBaseContext());
         }
-        throw new IllegalArgumentException("Given context " + context + " does not implement RetainState.Provider");
+        throw new IllegalArgumentException("Given host " + host + " does not implement RetainState.Provider");
     }
 
     private SparseArray<Object> state;
