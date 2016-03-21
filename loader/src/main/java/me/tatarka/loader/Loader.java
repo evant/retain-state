@@ -28,11 +28,15 @@ public abstract class Loader<T> {
     private static final int CALLBACKS_START = 1;
     private static final int CALLBACKS_RESULT = 2;
     private static final int CALLBACKS_COMPLETE = 4;
-    
+
     private static boolean isRunning(int state) {
         return (state & STATE_RUNNING) == STATE_RUNNING;
     }
     
+    private static boolean isCompleted(int state) {
+        return (state & STATE_COMPLETED) == STATE_COMPLETED;
+    }
+
     /**
      * Throws an {@link IllegalStateException} if loader is destroyed.
      */
@@ -67,14 +71,14 @@ public abstract class Loader<T> {
     };
 
     /**
-     * Starts the loader if it's not already running, calling {@link #onStart(Receiver)}} and
+     * Starts the loader if it has not already been started, calling {@link #onStart(Receiver)}} and
      * triggering {@link Callbacks#onLoaderStart()}. This must be called on the main thread.
      */
     @MainThread
     public final void start() {
         int s = state.get();
         checkDestroyed("start", s);
-        if (!isRunning(s)) {
+        if (!isRunning(s) && !isCompleted(s)) {
             state.set(STATE_RUNNING);
             if (callbacks != null) {
                 callbacks.onLoaderStart();
@@ -153,7 +157,7 @@ public abstract class Loader<T> {
      * more results may be delivered and it's no longer running.
      */
     public final boolean isCompleted() {
-        return (state.get() & STATE_COMPLETED) == STATE_COMPLETED;
+        return isCompleted(state.get());
     }
 
     /**
