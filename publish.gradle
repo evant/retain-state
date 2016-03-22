@@ -16,10 +16,14 @@ artifacts {
     archives androidJavadocsJar
 }
 
-if (project.hasProperty('sonatype.username') && project.hasProperty('sonatype.password')) {
+if (project.hasProperty('sonatype.username') || project.hasProperty('bintray.username')) {
+    
     signing {
         sign configurations.archives
     }
+
+    def siteUrl = 'https://github.com/evant/retain-state'
+    def gitUrl = 'https://github.com/evantlemaddaluno/retain-state.git'
 
     uploadArchives {
         repositories {
@@ -43,12 +47,12 @@ if (project.hasProperty('sonatype.username') && project.hasProperty('sonatype.pa
                     name project.name
                     packaging 'aar'
                     description 'A dead simple way to retain some state thought configuration changes on Android'
-                    url 'https://github.com/evant/retain-state'
+                    url siteUrl
 
                     scm {
-                        url 'git@github.com:evant/retain-state.git'
-                        connection 'scm:git:git@github.com:evant/retain-state.git'
-                        developerConnection 'scm:git:git@github.com:evant/retain-state.git'
+                        url siteUrl
+                        connection gitUrl
+                        developerConnection gitUrl
                     }
 
                     licenses {
@@ -64,6 +68,27 @@ if (project.hasProperty('sonatype.username') && project.hasProperty('sonatype.pa
                             id 'evant'
                             name 'Evan Tatarka'
                         }
+                    }
+                }
+            }
+        }
+    }
+    
+    if (project.hasProperty('bintray.username')) {
+        bintray {
+            user = project.property('bintray.username')
+            key = project.property('bintray.apikey')
+            configurations = ['archives']
+            pkg {
+                repo = 'maven'
+                name = project.name
+                websiteUrl = siteUrl
+                vcsUrl = gitUrl
+                licenses = ["Apache-2.0"]
+                version {
+                    gpg {
+                        sign = true
+                        passphrase = project.getProperty('signing.password')
                     }
                 }
             }
