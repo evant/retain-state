@@ -223,6 +223,14 @@ public class MyFragment extends BaseFragment {
     }
     
     @Override
+    public void onStop() {
+      super.onStop();
+      if (isRemoving()) {
+        loaderManager.detach();
+      }
+    }
+    
+    @Override
     public void onDestroy() {
         super.onDestroy();
         if (getActivity().isFinishing() || isRemoving()) {
