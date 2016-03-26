@@ -225,7 +225,7 @@ public class MyFragment extends BaseFragment {
     @Override
     public void onStop() {
       super.onStop();
-      if (isRemoving()) {
+      if (loaderManager != null && isRemoving()) {
         loaderManager.detach();
       }
     }
@@ -233,10 +233,12 @@ public class MyFragment extends BaseFragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (getActivity().isFinishing() || isRemoving()) {
-            loaderManager.destroy();
-        } else {
-            loaderManager.detach();
+        if (loaderManager != null) {
+          if (getActivity().isFinishing() || isRemoving()) {
+              loaderManager.destroy();
+          } else {
+              loaderManager.detach();
+          }
         }
     }
 }
