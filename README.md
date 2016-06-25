@@ -78,15 +78,6 @@ public class MainActivity extends BaseActivity {
 
 Note: Your id's *must* be unique for the given Activity. You can achieve this by using view id's, you own generated id's, or by hand crafting them yourself.
 
-## Aren't these methods deprecated?
-The documentation states:
->  This method was deprecated in API level 13.
-Use the new Fragment API setRetainInstance(boolean) instead; this is also available on older platforms through the Android compatibility package.
-
-This is silly, there are many instances when using a Fragment doesn't make sense, and Fragments retained this way can't even be nested! See https://code.google.com/p/android/issues/detail?id=151346 for more reasons why these methods should not be deprecated.
-
-Additionally, these methods are used heavily by the support library to backport Loaders and Fragments. It would be infeasible for google to actually remove these methods any time in the near future, if at all because of this.
-
 # Fragments
 
 Optionally, you can extend support to fragments by nesting `RetainState` instances. Included is a library to easily obtain unique id's from fragments. Note that the fragment id's are negative, so you should use positive id's for other things.
