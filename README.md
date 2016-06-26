@@ -29,7 +29,7 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   public Object onRetainNonConfigurationInstance() {
-      return retainState.getState();
+      return retainState.onRetain();
   }
 
   @Override
