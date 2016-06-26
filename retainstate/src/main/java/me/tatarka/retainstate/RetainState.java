@@ -38,23 +38,59 @@ public class RetainState implements Iterable<Object> {
     }
 
     private SparseArray<Object> state;
+    private boolean isRetaining;
 
     /**
      * Constructs a new instance with the given saved state. This state should be obtained from
-     * {@link #getState()} and saved across configuration changes.
+     * {@link #onRetain()} and saved across configuration changes.
      */
     @SuppressWarnings("unchecked")
     public RetainState(Object retainedState) {
         if (retainedState != null) {
             state = (SparseArray<Object>) retainedState;
+            setIsRetaining(false);
         }
     }
 
     /**
-     * Returns the state to save across configuration changes.
+     * Notify that the RetainState is about to retained and return the state that should be
+     * retained.
      */
-    public Object getState() {
+    public Object onRetain() {
+        setIsRetaining(true);
         return state;
+    }
+
+    /**
+     * Returns if the RetainState is about to be preserved across a configuration change. This is
+     * useful for lifecycle-aware components that may want to clean up resources when it will no
+     * longer be retained. This will be true after {@link #onRetain()} is called.
+     */
+    public boolean isRetaining() {
+        return isRetaining;
+    }
+
+    /**
+     * Notifies the RetainState that it will no longer be retained. Will remove any retained state.
+     */
+    public void destroy() {
+        setIsRetaining(false);
+        if (state != null) {
+            state.clear();
+        }
+    }
+
+    private void setIsRetaining(boolean value) {
+        isRetaining = value;
+        // Propagate the retain notification down to any nested children.
+        if (state != null) {
+            for (int i = 0; i < state.size(); i++) {
+                Object child = state.valueAt(i);
+                if (child != null && child instanceof RetainState) {
+                    ((RetainState) child).setIsRetaining(value);
+                }
+            }
+        }
     }
 
     /**
@@ -70,6 +106,9 @@ public class RetainState implements Iterable<Object> {
         T item = (T) state.get(id);
         if (item == null) {
             item = onCreate.onCreate();
+            if (item instanceof RetainState) {
+                ((RetainState) item).setIsRetaining(isRetaining);
+            }
             state.put(id, item);
         }
         return item;
@@ -94,6 +133,9 @@ public class RetainState implements Iterable<Object> {
         if (state != null) {
             Object value = state.get(id);
             state.remove(id);
+            if (value instanceof RetainState) {
+                ((RetainState) value).setIsRetaining(false);
+            }
             return (T) value;
         }
         return null;

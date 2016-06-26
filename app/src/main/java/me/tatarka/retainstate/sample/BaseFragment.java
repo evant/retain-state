@@ -13,10 +13,10 @@ public class BaseFragment extends Fragment implements RetainState.Provider {
     private LoaderManager loaderManager;
 
     @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-        retainState = RetainState.from(getHost()).retain(RetainStateFragment.getId(this), RetainState.CREATE);
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        retainState = RetainStateFragment.from(this);
         loaderManager = retainState.retain(R.id.my_loader, LoaderManager.CREATE);
+        super.onCreate(savedInstanceState);
     }
 
     public LoaderManager loaderManager() {
@@ -37,10 +37,6 @@ public class BaseFragment extends Fragment implements RetainState.Provider {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (getActivity().isFinishing() || isRemoving()) {
-            loaderManager.destroy();
-        } else {
-            loaderManager.detach();
-        }
+        loaderManager.onDestroy(retainState);
     }
 }

@@ -19,8 +19,8 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.neenbedankt.android-apt'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.2"
+    compileSdkVersion 24
+    buildToolsVersion '24.0.0'
 
     defaultConfig {
         applicationId "me.tatarka.retainstate"
@@ -41,7 +41,8 @@ dependencies {
     compile project(':retainstate')
     compile project(':fragment')
     compile project(':loader')
-    compile 'com.android.support:appcompat-v7:23.2.1'
+    compile project(':loader-support')
+    compile 'com.android.support:appcompat-v7:24.0.0'
     compile 'com.google.dagger:dagger:2.0.2'
     apt 'com.google.dagger:dagger-compiler:2.0.2'
     provided 'org.glassfish:javax.annotation:10.0-b28'

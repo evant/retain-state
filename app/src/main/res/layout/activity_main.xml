@@ -53,4 +53,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         tools:layout="@layout/fragment_my" />
+
+    <me.tatarka.retainstate.sample.MyCustomView
+        android:id="@+id/my_custom_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/dialog_fragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dialog Fragment" />
 </LinearLayout>

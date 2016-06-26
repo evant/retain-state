@@ -11,7 +11,7 @@ Luckily, there is a pair of methods that make retaining some state between confi
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:retainstate:0.3'
+compile 'me.tatarka.retainstate:retainstate:0.4'
 ```
 
 ## Usage
@@ -23,8 +23,8 @@ public class BaseActivity extends Activity implements RetainState.Provider {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-      super.onCreate(savedInstanceState);
       retainState = new RetainState(getLastNonConfigurationInstance());
+      super.onCreate(savedInstanceState);
   }
 
   @Override
@@ -54,7 +54,7 @@ public class MainActivity extends BaseActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     
-    model = RetainState.get(this).retain(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
+    model = RetainState.from(this).retain(R.id.my_id, new RetainState.OnCreate<MyRetainedModel>() {
       @Override
       public MyRetainedModel onCreate() {
         return new MyRetainedModel();
@@ -74,16 +74,16 @@ public class MainActivity extends BaseActivity {
 }
 ```
 
-`RetainState.get()` can be used in any place where the Activity's context is available, like in a Fragment or a custom View.
+`RetainState.from()` can be used in any place where the provider is available or a context wrapper around it, like in an Activity, Fragment or a custom View.
 
 Note: Your id's *must* be unique for the given Activity. You can achieve this by using view id's, you own generated id's, or by hand crafting them yourself.
 
 # Fragments
 
-Optionally, you can extend support to fragments by nesting `RetainState` instances. Included is a library to easily obtain unique id's from fragments. Note that the fragment id's are negative, so you should use positive id's for other things.
+Optionally, you can extend support to fragments by nesting `RetainState` instances. Included is a library to easily obtain a scoped RetainState from a fragment. Note that it uses a Loader under the hood, so you shouldn't create another loader in the same fragment with an id of -1. You must use support lib `24.0.0` for proper fragment support because it fixes some important fragment-related bugs.
 
 ```groovy
-compile 'me.tatarka.retainstate:fragment:0.3'
+compile 'me.tatarka.retainstate:fragment:0.4'
 ```
 
 Just make a fragment a provider, similarly to an activity.
@@ -94,8 +94,8 @@ public class BaseFragment extends Fragment implements RetainState.Provider {
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        retainState = RetainStateFragment.from(this);
         super.onActivityCreated(savedInstanceState);
-        retainState = RetainState.from(getHost()).retain(RetainStateFragment.getId(this), RetainState.CREATE);
     }
 
     @Override
@@ -105,29 +105,21 @@ public class BaseFragment extends Fragment implements RetainState.Provider {
         }
         return retainState;
     }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if (getActivity().isFinishing() || isRemoving()) {
-            RetainState.from(getHost()).remove(RetainStateFragment.getId(this));
-        }
-    }
 }
 ```
 
 # Loader
 
-This repo also includes a super-simple loader implementation built on top of retain-state. It lets you easily load something in the background and then get callbacks on the main thread that fire at the approriate times.
+This repo also includes a super-simple loader implementation built on top of retain-state. It lets you easily load something in the background and then get callbacks on the main thread that fire at the appropriate times.
 
 ## Download
 
 ```groovy
-compile 'me.tatarka.retainstate:loader:0.3'
+compile 'me.tatarka.retainstate:loader:0.4'
 // Contains an AsyncTaskLoader and CursorLoader to mirror the ones in the support lib.
-compile 'me.tatarka.retainstate:loader-support:0.3'
+compile 'me.tatarka.retainstate:loader-support:0.4'
 // Takes an rxjava observable.
-compile 'me.tatarka.retainstate:loader-rx:0.3'
+compile 'me.tatarka.retainstate:loader-rx:0.4'
 ```
 
 ## Usage
@@ -141,7 +133,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        loaderManager = RetainState.get(this).retain(R.id.my_loader_manager, LoaderManager.CREATE);
+        loaderManager = getRetainState().retain(R.id.my_loader_manager, LoaderManager.CREATE);
 
         final MyLoader loader = loaderManager.init(0, MyLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
@@ -171,13 +163,8 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // Loader cleanup, detach() will remove the listeners, 
-        // destroy() will additionally cancel and clean up the loaders
-        if (isFinishing()) {
-            loaderManager.destroy();
-        } else {
-            loaderManager.detach();
-        }
+        // Loader cleanup, this is important to detach the loader from the Activity
+        loaderManager.onDestroy(getRetainState());
     }
 }
 ```
@@ -191,7 +178,7 @@ public class MyFragment extends BaseFragment {
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        loaderManager = RetainState.get(this).retain(R.id.my_loader_manager, LoaderManager.CREATE);
+        loaderManager = getRetainState().retain(R.id.my_loader_manager, LoaderManager.CREATE);
     
         final ModelLoader loader = loaderManager().init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
@@ -224,13 +211,7 @@ public class MyFragment extends BaseFragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (loaderManager != null) {
-          if (getActivity().isFinishing() || isRemoving()) {
-              loaderManager.destroy();
-          } else {
-              loaderManager.detach();
-          }
-        }
+        loaderManager.onDestroy(getRetainState());
     }
 }
 ```

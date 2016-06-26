@@ -1,7 +1,6 @@
 package me.tatarka.retainstate.sample;
 
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +10,7 @@ import android.widget.TextView;
 import me.tatarka.loader.Loader;
 
 public class MyFragment extends BaseFragment {
-    
+
     private TextView textView;
     private Button button;
 
@@ -24,11 +23,7 @@ public class MyFragment extends BaseFragment {
     public void onViewCreated(View view, Bundle savedInstanceState) {
         textView = (TextView) view.findViewById(R.id.result_load_from_fragment);
         button = (Button) view.findViewById(R.id.button_load_from_fragment);
-    }
 
-    @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
         final ModelLoader loader = loaderManager().init(0, ModelLoader.CREATE, new Loader.CallbacksAdapter<String>() {
             @Override
             public void onLoaderStart() {

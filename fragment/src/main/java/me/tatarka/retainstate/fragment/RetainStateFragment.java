@@ -1,60 +1,66 @@
 package me.tatarka.retainstate.fragment;
 
-import android.app.Fragment;
+import android.content.Context;
+import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 
-import java.lang.reflect.Field;
+import me.tatarka.retainstate.RetainState;
 
 /**
  * Helpers for using {@link me.tatarka.retainstate.RetainState} with fragments.
  */
 public class RetainStateFragment {
 
-    private static Field frameworkFragmentIndexField;
-    private static Field supportFragmentIndexField;
+    public static final int LOADER_ID = -1;
 
     /**
-     * Returns a unique id for the given fragment among it's peers in the fragment manager. These
-     * id's are negative, allowing you to continue to use positive id's for other retained state.
+     * Returns a {@link RetainState} scoped to the given fragment. The implementation uses a system
+     * loader. If you want to use your own loaders, you should ensure they don't collide with the id
+     * {@link #LOADER_ID}. However, you'd probably want to use {@code me.tatarka.loader.Loader}
+     * instead since it has a nicer interface.
      */
-    public static int getId(Fragment fragment) {
-        if (frameworkFragmentIndexField == null) {
-            try {
-                Field field = Fragment.class.getDeclaredField("mIndex");
-                field.setAccessible(true);
-                frameworkFragmentIndexField = field;
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return getId(frameworkFragmentIndexField, fragment);
+    public static RetainState from(Fragment fragment) {
+        RetainStateFragmentCallbacks callbacks = new RetainStateFragmentCallbacks(fragment.getContext());
+        fragment.getLoaderManager().initLoader(LOADER_ID, null, callbacks);
+        return ((RetainStateFragmentLoader) fragment.getLoaderManager().<RetainState>getLoader(LOADER_ID)).retainState;
     }
 
-    /**
-     * Returns a unique id for the given fragment among it's peers in the fragment manager. These
-     * id's are negative, allowing you to continue to use positive id's for other retained state.
-     */
-    public static int getId(android.support.v4.app.Fragment fragment) {
-        if (supportFragmentIndexField == null) {
-            try {
-                Field field = android.support.v4.app.Fragment.class.getDeclaredField("mIndex");
-                field.setAccessible(true);
-                supportFragmentIndexField = field;
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
-            }
+    static class RetainStateFragmentLoader extends Loader<RetainState> {
+        final RetainState retainState;
+
+        public RetainStateFragmentLoader(Context context) {
+            super(context);
+            retainState = new RetainState(null);
+            retainState.onRetain();
         }
-        return getId(supportFragmentIndexField, fragment);
+
+        @Override
+        protected void onReset() {
+            retainState.destroy();
+        }
     }
 
-    private static int getId(Field field, Object fragment) {
-        try {
-            int index = (int) field.get(fragment);
-            if (index < 0) {
-                throw new IllegalStateException("Fragment's index has not been initialized, you should wait until onActivityCreated() to call this method");
-            }
-            return -(index + 1);
-        } catch (IllegalAccessException e) {
-            throw new RuntimeException(e);
+    static class RetainStateFragmentCallbacks implements LoaderManager.LoaderCallbacks<RetainState> {
+        final Context context;
+
+        RetainStateFragmentCallbacks(Context context) {
+            this.context = context;
+        }
+
+        @Override
+        public Loader<RetainState> onCreateLoader(int id, Bundle args) {
+            return new RetainStateFragmentLoader(context);
+        }
+
+        @Override
+        public void onLoadFinished(Loader<RetainState> loader, RetainState data) {
+        }
+
+        @Override
+        public void onLoaderReset(Loader<RetainState> loader) {
+
         }
     }
 }

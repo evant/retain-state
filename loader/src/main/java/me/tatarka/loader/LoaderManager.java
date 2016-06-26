@@ -84,4 +84,17 @@ public class LoaderManager {
         }
         loaders.clear();
     }
+
+    /**
+     * Detaches or destroys the loader based on if the given RetainState will be retained. This
+     * simplifies cleanup and should normally be called in your Activity or Fragment's {@code
+     * onDestroy()}.
+     */
+    public void onDestroy(RetainState retainState) {
+        if (retainState.isRetaining()) {
+            detach();
+        } else {
+            destroy();
+        }
+    }
 }

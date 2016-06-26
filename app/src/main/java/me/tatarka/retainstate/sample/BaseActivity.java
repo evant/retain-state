@@ -12,14 +12,14 @@ public abstract class BaseActivity extends AppCompatActivity implements RetainSt
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         retainState = new RetainState(getLastCustomNonConfigurationInstance());
         loaderManager = retainState.retain(R.id.my_loader, LoaderManager.CREATE);
+        super.onCreate(savedInstanceState);
     }
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
-        return retainState.getState();
+        return retainState.onRetain();
     }
 
     public LoaderManager loaderManager() {
@@ -40,11 +40,7 @@ public abstract class BaseActivity extends AppCompatActivity implements RetainSt
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (isFinishing()) {
-            loaderManager.destroy();
-        } else {
-            loaderManager.detach();
-        }
+        loaderManager.onDestroy(retainState);
     }
 }
 

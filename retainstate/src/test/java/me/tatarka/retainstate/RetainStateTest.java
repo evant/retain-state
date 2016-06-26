@@ -121,7 +121,7 @@ public class RetainStateTest {
                 return "test";
             }
         });
-        Object state = retainState.getState();
+        Object state = retainState.onRetain();
         retainState = new RetainState(state);
         String result = retainState.get(0);
 
