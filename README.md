@@ -201,14 +201,6 @@ public class MyFragment extends BaseFragment {
     }
     
     @Override
-    public void onStop() {
-      super.onStop();
-      if (loaderManager != null && isRemoving()) {
-        loaderManager.detach();
-      }
-    }
-    
-    @Override
     public void onDestroy() {
         super.onDestroy();
         loaderManager.onDestroy(getRetainState());
